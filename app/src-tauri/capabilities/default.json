@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Pixu M0 最小权限集：仅核心默认能力，后续按功能逐项申请",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

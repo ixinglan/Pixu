@@ -1,0 +1,25 @@
+# Rust
+/target
+**/target/
+
+# Node / 前端
+node_modules/
+dist/
+app/dist/
+**/*.log
+
+# Tauri 构建产物
+app/src-tauri/gen/
+
+# 系统与编辑器
+.DS_Store
+.vscode/
+.idea/
+*.swp
+.trae-html-share-packages
+
+# 本地环境
+.env
+.env.local
+
+

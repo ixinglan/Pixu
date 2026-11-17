@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pixu · 清曜 Mac 空间清理</title>
+<link rel="stylesheet" href="styles.css" />
+<script>
+  /* 无闪屏主题初始化：在首帧绘制前应用持久化主题（默认深色） */
+  try {
+    var __theme = localStorage.getItem('orbit.prototype.theme');
+    if (__theme === 'light' || __theme === 'dark') {
+      document.documentElement.dataset.theme = __theme;
+    }
+  } catch (e) {}
+  /* 宿主检测：Tauri 内压平模拟窗口外壳，浏览器预览保持原样 */
+  if (typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.__TAURI__)) {
+    document.documentElement.dataset.host = 'tauri';
+  }
+</script>
+</head>
+<body>
+  <!-- 桌面环境：模拟 macOS 应用窗口 -->
+  <div class="desktop" id="desktop">
+    <div class="mac-window" id="macWindow">
+      <!-- 标题栏（外壳冻结区，视图不得改写） -->
+      <header class="titlebar">
+        <div class="traffic-lights">
+          <span class="tl tl-close"></span>
+          <span class="tl tl-min"></span>
+          <span class="tl tl-max"></span>
+        </div>
+        <div class="titlebar-title" id="windowTitle">Pixu</div>
+        <div class="titlebar-side" id="titlebarSide"></div>
+      </header>
+
+      <div class="app-body">
+        <!-- 侧栏导航（shell.js 注入，顺序冻结） -->
+        <aside class="app-nav" id="appNav"></aside>
+        <!-- 视图主插槽（仅此处随路由变化） -->
+        <main class="app-content" id="appContent"></main>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全局模态 / 抽屉 / Toast 挂载点 -->
+  <div id="modalRoot"></div>
+  <div id="drawerRoot"></div>
+  <div id="toastRoot"></div>
+
+  <script src="js/icons.js"></script>
+  <script src="js/mascots.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/shell.js"></script>
+  <script src="js/views/clean.js"></script>
+  <script src="js/views/ai.js"></script>
+  <script src="js/views/software.js"></script>
+  <script src="js/views/analyze.js"></script>
+  <script src="js/views/status.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => OrbitShell.boot());
+  </script>
+</body>
+</html>

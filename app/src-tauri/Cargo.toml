@@ -1,0 +1,23 @@
+[package]
+name = "pixu"
+version = "0.1.0"
+description = "Pixu — macOS space cleaner"
+authors = ["Pixu"]
+edition = "2021"
+rust-version = "1.98"
+
+[lib]
+name = "pixu_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 领域 crate（M0 仅骨架，M1 起逐步接入真实实现）
+pixu-app-service = { path = "../../crates/pixu-app-service" }
+pixu-infra = { path = "../../crates/pixu-infra" }

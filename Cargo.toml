@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = [
+    "app/src-tauri",
+    "crates/pixu-app-service",
+    "crates/pixu-domain-scan",
+    "crates/pixu-domain-uninstall",
+    "crates/pixu-safety-gate",
+    "crates/pixu-safety-guard",
+    "crates/pixu-fs-ops",
+    "crates/pixu-platform-mac",
+    "crates/pixu-infra",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.98"
+license = "MIT"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
