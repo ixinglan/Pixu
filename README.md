@@ -119,13 +119,13 @@ CleanMacos/
 | crate | 职责 | 状态 |
 |---|---|---|
 | `pixu-app-service` | **服务 trait 与 DTO**：定义 `ScanService` / `StatusService` / `SettingsService` / `CleanService` / `UninstallService` 五个 trait，以及跨层传输的 serde 结构（`CleanGroup`、`AppEntry`、`DiskNode` 等）。前端拿到的 JSON 字段与这里一一对应 | ✅ M0 完成 |
-| `pixu-domain-scan` | 目录遍历、体积计量（APFS 克隆/硬链接感知，避免重复计费）、缓存分组规则 | 🔲 M2 |
-| `pixu-domain-uninstall` | `/Applications` bundle 元数据读取、应用残留规则库（首版精选 50 款）、个人数据与可删残留的分类 | 🔲 M2 |
-| `pixu-safety-gate` | **删除前必经之门**：路径规范化、符号链接解析、允许/拒绝名单、系统卷与 SIP 边界、firmlink 处理。白名单读不到时 fail-closed | 🔲 M1 |
-| `pixu-safety-guard` | 删除前护栏：目标进程存活检测、活动 SQLite（-wal/-shm 占用）识别、下载中文件保护、句柄占用检查 | 🔲 M1 |
-| `pixu-fs-ops` | 实际文件操作：NSFileManager 废纸篓（支持 Finder Put Back）、永久删除（仅独立开关+二次确认）、操作超时预算。不做路径决策——输入必须已过 safety-gate | 🔲 M1 |
-| `pixu-platform-mac` | macOS 平台封装：TCC / Full Disk Access 状态读取与设置跳转、SMAppService、objc2 系统框架绑定。仅编译 `aarch64-apple-darwin` | 🔲 M3 |
-| `pixu-infra` | 基础设施：统一错误模型、本地审计日志（tracing + `~/Library/Logs` 落盘）、配置与历史存储、零遥测约束 | 🔲 M1 |
+| `pixu-domain-scan` | 目录遍历、体积计量（APFS 克隆/硬链接感知，避免重复计费）、缓存分组规则、AI 工具扫描（凭证目录硬隔离） | ✅ M2 / M3 完成 |
+| `pixu-domain-uninstall` | `/Applications` bundle 元数据读取、应用残留规则库（首版精选 50 款）、个人数据与可删残留的分类 | ✅ M2 完成 |
+| `pixu-safety-gate` | **删除前必经之门**：路径规范化、符号链接解析、允许/拒绝名单、系统卷与 SIP 边界、firmlink 处理。白名单读不到时 fail-closed | ✅ M1 完成 |
+| `pixu-safety-guard` | 删除前护栏：目标进程存活检测、活动 SQLite（-wal/-shm 占用）识别、下载中文件保护、句柄占用检查 | ✅ M1 完成 |
+| `pixu-fs-ops` | 实际文件操作：NSFileManager 废纸篓（支持 Finder Put Back）、永久删除（仅独立开关+二次确认）、操作超时预算。不做路径决策——输入必须已过 safety-gate | ✅ M1 完成（写操作开发期跳过，见 pending 文档） |
+| `pixu-platform-mac` | macOS 平台封装：TCC / Full Disk Access 状态读取与设置跳转、SMAppService、objc2 系统框架绑定。仅编译 `aarch64-apple-darwin` | ⏳ 待 M5（FDA 探测 M3 已在 services/real.rs 内联实现；objc2 封装留待发布前） |
+| `pixu-infra` | 基础设施：统一错误模型、本地审计日志（tracing + `~/Library/Logs` 落盘）、配置与历史存储、零遥测约束 | ✅ M1 完成（审计日志当前内存实现，落盘留待 M5） |
 
 ---
 
@@ -138,14 +138,17 @@ CleanMacos/
   → views/clean.js: startScan()
   → api.js: OrbitAPI.scanCleanGroups()  →  invoke('scan_clean_groups')
   → Tauri IPC（JSON 序列化）
-  → commands/mod.rs: scan_clean_groups(svc: State<MockScanService>)
-  → svc.scan_clean_groups()   ← 调用 ScanService trait
-  → mock/mod.rs: MockScanService 返回 Vec<CleanGroup>
+  → commands/mod.rs: scan_clean_groups(reg: State<ServiceRegistry>)
+  → reg.scan.scan_clean_groups()   ← 调用 ScanService trait
+  → services/real.rs: RealScanService → pixu_domain_scan 真实遍历文件系统（只读）
   ← 原路返回（serde → JSON → JS 对象）
 前端渲染清理分组列表
 ```
 
-**解耦核心**：command 依赖的是 `State<MockScanService>`，调用的是 `ScanService` trait。M1 把 `MockScanService` 换成 `RealScanService`，command 和前端**零改动**。
+**解耦核心**：command 依赖的是 `State<ServiceRegistry>`，调用的是 `ScanService` trait。
+Registry 装配 Real 实现；如需回退 Mock，仅改 `ServiceRegistry::new()`，command 和前端**零改动**。
+所有写操作受 `pixu_app_service::WRITE_OPERATIONS_ENABLED`（开发期 = false）控制，
+返回 `performed: false`，不改动用户文件，详见 `docs/pending-write-operations.md`。
 
 完整图解见 `pixu-arch-flow_v2.html`。
 
@@ -156,10 +159,10 @@ CleanMacos/
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | **M0 壳子** | 工程骨架 + 原型平移 + trait/DTO + mock 数据 + 前端全量 invoke | ✅ 完成 |
-| M1 | 安全内核 + 清理页真实实现 | 🔲 待开始 |
-| M2 | 卸载 + 分析页真实实现 | 🔲 |
-| M3 | AI 数据 + 状态 + 设置真实实现 | 🔲 |
-| M4 | 加固公测 | 🔲 |
+| M1 | 安全内核 + 清理页真实实现 | ✅ 完成 |
+| M2 | 卸载 + 分析页真实实现 | ✅ 完成 |
+| M3 | AI 数据 + 状态 + 设置真实实现 | ✅ 完成 |
+| M4 | 加固公测（fuzz/集成测试 + 自动更新骨架 + Beta 渠道） | ✅ 完成 |
 | M5 | 签名公证 + CI + 发布 | 🔲 |
 
 详见 `product-rd-plan-v2.md`。
