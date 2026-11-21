@@ -18,6 +18,10 @@ tauri = { version = "2.12", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# 领域 crate（M0 仅骨架，M1 起逐步接入真实实现）
-pixu-app-service = { path = "../../crates/pixu-app-service" }
-pixu-infra = { path = "../../crates/pixu-infra" }
+# 领域 crate
+pixu-app-service = { workspace = true }
+pixu-domain-scan = { workspace = true }
+pixu-safety-gate = { workspace = true }
+pixu-safety-guard = { workspace = true }
+pixu-fs-ops = { workspace = true }
+pixu-infra = { workspace = true }

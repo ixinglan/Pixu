@@ -18,6 +18,21 @@ edition = "2021"
 rust-version = "1.98"
 license = "MIT"
 
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+walkdir = "2"
+sysinfo = "0.32"
+pixu-app-service = { path = "crates/pixu-app-service" }
+pixu-domain-scan = { path = "crates/pixu-domain-scan" }
+pixu-domain-uninstall = { path = "crates/pixu-domain-uninstall" }
+pixu-safety-gate = { path = "crates/pixu-safety-gate" }
+pixu-safety-guard = { path = "crates/pixu-safety-guard" }
+pixu-fs-ops = { path = "crates/pixu-fs-ops" }
+pixu-platform-mac = { path = "crates/pixu-platform-mac" }
+pixu-infra = { path = "crates/pixu-infra" }
+
 [profile.release]
 opt-level = "s"
 lto = true

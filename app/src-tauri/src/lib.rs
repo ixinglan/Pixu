@@ -1,19 +1,16 @@
-//! Pixu 桌面壳入口（M0）：装配 Tauri 运行时 + Mock 服务。
+//! Pixu 桌面壳入口：装配 Tauri 运行时 + 服务注册表。
 //! 业务逻辑全部位于 workspace crates，本文件保持薄层。
 
 mod commands;
 mod mock;
+mod services;
 
 use commands::*;
-use mock::{MockCleanService, MockScanService, MockSettingsService, MockStatusService, MockUninstallService};
+use services::ServiceRegistry;
 
 pub fn run() {
     tauri::Builder::default()
-        .manage(MockScanService)
-        .manage(MockStatusService)
-        .manage(MockSettingsService)
-        .manage(MockCleanService)
-        .manage(MockUninstallService)
+        .manage(ServiceRegistry::new())
         .invoke_handler(tauri::generate_handler![
             ping,
             scan_clean_groups,

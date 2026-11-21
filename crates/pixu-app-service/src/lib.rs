@@ -17,9 +17,34 @@ impl AppError {
     pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self { code: code.into(), message: message.into() }
     }
+    pub fn io(message: impl Into<String>) -> Self {
+        Self { code: s("io"), message: message.into() }
+    }
+    pub fn safety(message: impl Into<String>) -> Self {
+        Self { code: s("safety"), message: message.into() }
+    }
+    pub fn not_found(message: impl Into<String>) -> Self {
+        Self { code: s("not_found"), message: message.into() }
+    }
+}
+
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for AppError {}
+
+impl From<std::io::Error> for AppError {
+    fn from(e: std::io::Error) -> Self {
+        AppError::io(e.to_string())
+    }
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+fn s(v: &str) -> String { v.to_string() }
 
 // ─── 清理页 DTO ─────────────────────────────────────────────
 
@@ -186,6 +211,8 @@ pub struct Settings {
 }
 
 // ─── 操作结果 DTO ───────────────────────────────────────────
+// performed: 是否真实执行了写操作（开发期写操作一律跳过 → false）
+// message:   跳过原因或执行说明
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PreviewResult {
@@ -198,21 +225,41 @@ pub struct CleanResult {
     pub freed: u64,
     pub permanent: bool,
     pub skipped: u32,
+    pub performed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UninstallResult {
     pub ok: bool,
+    pub performed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrashResult {
     pub ok: bool,
+    pub performed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FdaResult {
     pub opened: bool,
+    pub performed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+/// 开发期全局开关：写操作是否真实执行。
+/// false 时所有写操作返回「跳过」结果，不改动用户文件。
+pub const WRITE_OPERATIONS_ENABLED: bool = false;
+
+pub fn skip_message() -> String {
+    s("写操作已跳过（开发期 WRITE_OPERATIONS_ENABLED=false），请在 docs/pending-write-operations.md 审阅后手动执行")
 }
 
 // ─── 服务 trait ─────────────────────────────────────────────

@@ -6,3 +6,5 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+pixu-app-service = { workspace = true }
+thiserror = { workspace = true }

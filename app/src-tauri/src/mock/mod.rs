@@ -307,19 +307,34 @@ impl CleanService for MockCleanService {
         Ok(PreviewResult { count: items.len(), total })
     }
     fn execute_clean(&self, items: Vec<CleanItem>, permanent: bool) -> AppResult<CleanResult> {
+        if !WRITE_OPERATIONS_ENABLED {
+            return Ok(CleanResult {
+                freed: 0, permanent, skipped: items.len() as u32,
+                performed: false, message: Some(skip_message()),
+            });
+        }
         let freed: u64 = items.iter().map(|i| i.size).sum();
-        Ok(CleanResult { freed, permanent, skipped: 0 })
+        Ok(CleanResult { freed, permanent, skipped: 0, performed: true, message: None })
     }
 }
 
 impl UninstallService for MockUninstallService {
     fn uninstall_app(&self, _app_id: String, _keep_data: bool) -> AppResult<UninstallResult> {
-        Ok(UninstallResult { ok: true })
+        if !WRITE_OPERATIONS_ENABLED {
+            return Ok(UninstallResult { ok: false, performed: false, message: Some(skip_message()) });
+        }
+        Ok(UninstallResult { ok: true, performed: true, message: None })
     }
     fn move_to_trash(&self, _path: String) -> AppResult<TrashResult> {
-        Ok(TrashResult { ok: true })
+        if !WRITE_OPERATIONS_ENABLED {
+            return Ok(TrashResult { ok: false, performed: false, message: Some(skip_message()) });
+        }
+        Ok(TrashResult { ok: true, performed: true, message: None })
     }
     fn open_fda_settings(&self) -> AppResult<FdaResult> {
-        Ok(FdaResult { opened: true })
+        if !WRITE_OPERATIONS_ENABLED {
+            return Ok(FdaResult { opened: false, performed: false, message: Some(skip_message()) });
+        }
+        Ok(FdaResult { opened: true, performed: true, message: None })
     }
 }
