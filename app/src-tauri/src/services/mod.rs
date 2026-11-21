@@ -7,8 +7,10 @@ use std::sync::Arc;
 
 use pixu_app_service::*;
 
-use crate::mock::{MockSettingsService, MockStatusService};
-use crate::services::real::{RealCleanService, RealScanService, RealUninstallService};
+use crate::services::real::{
+    AuditStore, RealCleanService, RealScanService, RealSettingsService, RealStatusService,
+    RealUninstallService,
+};
 
 pub struct ServiceRegistry {
     pub scan: Arc<dyn ScanService>,
@@ -20,12 +22,14 @@ pub struct ServiceRegistry {
 
 impl ServiceRegistry {
     pub fn new() -> Self {
+        // 内存审计日志在「清理服务」与「设置服务」间共享（写盘跳过，M5 落盘）
+        let audit = Arc::new(AuditStore::default());
         Self {
-            // M2: 清理页、软件页、分析页走真实实现；状态/设置暂用 Mock（M3 替换）
+            // M3：全量切换真实实现；Mock 仅保留作单元测试/回退参考
             scan: Arc::new(RealScanService::new()),
-            status: Arc::new(MockStatusService),
-            settings: Arc::new(MockSettingsService),
-            clean: Arc::new(RealCleanService::new()),
+            status: Arc::new(RealStatusService::new()),
+            settings: Arc::new(RealSettingsService::new(audit.clone())),
+            clean: Arc::new(RealCleanService::new(audit)),
             uninstall: Arc::new(RealUninstallService::new()),
         }
     }

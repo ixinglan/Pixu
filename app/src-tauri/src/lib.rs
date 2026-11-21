@@ -2,6 +2,8 @@
 //! 业务逻辑全部位于 workspace crates，本文件保持薄层。
 
 mod commands;
+// mock 服务保留用于回退切换；当前 Registry 装配 Real，故存在未引用的辅助函数。
+#[allow(dead_code)]
 mod mock;
 mod services;
 

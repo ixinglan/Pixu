@@ -278,8 +278,11 @@ fn mock_settings() -> Settings {
 // ─── Mock 服务实现 ──────────────────────────────────────────
 
 pub struct MockScanService;
+#[allow(dead_code)]
 pub struct MockStatusService;
+#[allow(dead_code)]
 pub struct MockSettingsService;
+#[allow(dead_code)]
 pub struct MockCleanService;
 #[allow(dead_code)]
 pub struct MockUninstallService;

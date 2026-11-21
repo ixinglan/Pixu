@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 
-use pixu_app_service::{CleanGroup, CleanItem, DiskNode};
+use pixu_app_service::{AiSubItem, AiTool, CleanGroup, CleanItem, DiskNode};
 
 /// 递归计量路径占用字节数（读操作）。
 /// 遇到无权限 / 已删除 / 符号链接环 时跳过该项，不中断整体。
@@ -177,6 +177,119 @@ pub fn scan_clean_groups() -> Vec<CleanGroup> {
 
     // 去掉所有项均为空的分组（如某用户根本没装浏览器）
     groups.into_iter().filter(|g| !g.items.is_empty()).collect()
+}
+
+/// 扫描 AI 工具数据：缓存 / 闲置会话 / 闲置 CLI（只读）。
+/// 凭证目录硬隔离：`is_credential_path` 命中的路径（~/.ssh、keychain、token/secret 等）
+/// 绝不扫描、绝不展示、绝不计量，从源头杜绝凭证泄露风险。
+pub fn scan_ai_tools() -> Vec<AiTool> {
+    let Some(home) = home_dir() else { return Vec::new() };
+    let h = home.to_string_lossy().to_string();
+
+    let mk = |id: &str, name: &str, rel: &str, sel: bool,
+              note: Option<&str>, risk: Option<&str>| -> Option<AiSubItem> {
+        let path = if rel.starts_with('/') { rel.to_string() } else { format!("{}/{}", h, rel) };
+        if is_credential_path(&path) { return None; }
+        let size = measure_path(&path);
+        if size == 0 { return None; }
+        Some(AiSubItem {
+            id: id.into(), name: name.into(), path, size, selected: sel,
+            note: note.map(str::to_string), risk: risk.map(str::to_string),
+        })
+    };
+
+    let mut tools = Vec::new();
+
+    tools.push(AiTool {
+        id: "claude".into(), name: "Claude Code".into(), hue: "#D9A27B".into(), icon: "terminal".into(),
+        caches: filter_opt(vec![
+            mk("c1", "项目索引与缓存", ".claude/cache", true, None, None),
+            mk("c2", "旧版本运行时", ".claude/versions", true, None, None),
+        ]),
+        sessions: filter_opt(vec![
+            mk("c3", "历史会话", ".claude/projects", false, Some("可能包含你想保留的上下文"), Some("warn")),
+        ]),
+        clis: vec![],
+    });
+    tools.push(AiTool {
+        id: "codex".into(), name: "Codex CLI".into(), hue: "#9DB2D8".into(), icon: "terminal".into(),
+        caches: filter_opt(vec![
+            mk("x1", "会话缓存与日志", ".codex/cache", true, None, None),
+        ]),
+        sessions: filter_opt(vec![
+            mk("x2", "旧会话记录", ".codex/sessions", false, None, Some("warn")),
+        ]),
+        clis: vec![],
+    });
+    tools.push(AiTool {
+        id: "cursor".into(), name: "Cursor".into(), hue: "#8FE3D8".into(), icon: "box".into(),
+        caches: filter_opt(vec![
+            mk("u1", "编辑器与扩展缓存", "Library/Application Support/Cursor/Cache", true, None, None),
+            mk("u2", "AI 补全索引缓存", "Library/Application Support/Cursor/User/globalStorage", true, None, None),
+        ]),
+        sessions: vec![], clis: vec![],
+    });
+    tools.push(AiTool {
+        id: "ollama".into(), name: "Ollama".into(), hue: "#E8E3DA".into(), icon: "box".into(),
+        caches: filter_opt(vec![
+            mk("o1", "运行日志", ".ollama/logs", true, None, None),
+        ]),
+        sessions: vec![],
+        clis: filter_opt(vec![
+            mk("o2", "本地模型（默认保留）", ".ollama/models", false, Some("模型体积大，默认保留"), Some("warn")),
+        ]),
+    });
+    tools.push(AiTool {
+        id: "lmstudio".into(), name: "LM Studio".into(), hue: "#F5C451".into(), icon: "box".into(),
+        caches: filter_opt(vec![
+            mk("l1", "推理缓存", "Library/Caches/ai.lmstudio", true, None, None),
+        ]),
+        sessions: vec![],
+        clis: filter_opt(vec![
+            mk("l2", "本地模型（默认保留）", ".cache/lm-studio/models", false, Some("模型体积大，默认保留"), Some("warn")),
+        ]),
+    });
+    tools.push(AiTool {
+        id: "huggingface".into(), name: "HuggingFace".into(), hue: "#E8B36A".into(), icon: "box".into(),
+        caches: filter_opt(vec![
+            mk("hf1", "模型与数据集缓存", ".cache/huggingface", false, Some("含已下载模型，默认不清理"), Some("warn")),
+        ]),
+        sessions: vec![], clis: vec![],
+    });
+    tools.push(AiTool {
+        id: "chatgpt".into(), name: "ChatGPT".into(), hue: "#4AE3C4".into(), icon: "box".into(),
+        caches: filter_opt(vec![
+            mk("g1", "应用缓存", "Library/Caches/com.openai.chat", true, None, None),
+            mk("g2", "离线数据缓存", "Library/Application Support/ChatGPT/Cache", true, None, None),
+        ]),
+        sessions: vec![], clis: vec![],
+    });
+    tools.push(AiTool {
+        id: "gemini".into(), name: "Gemini CLI".into(), hue: "#6AA9FF".into(), icon: "terminal".into(),
+        caches: filter_opt(vec![
+            mk("gm1", "缓存与日志", ".gemini", false, None, None),
+        ]),
+        sessions: vec![], clis: vec![],
+    });
+
+    // 仅保留至少有一项可清理内容的工具
+    tools.into_iter()
+        .filter(|t| !t.caches.is_empty() || !t.sessions.is_empty() || !t.clis.is_empty())
+        .collect()
+}
+
+fn filter_opt<T>(v: Vec<Option<T>>) -> Vec<T> {
+    v.into_iter().flatten().collect()
+}
+
+/// 凭证目录硬隔离：命中即绝不扫描/计量/展示。
+fn is_credential_path(p: &str) -> bool {
+    let p = p.to_lowercase();
+    let patterns = [
+        "/.ssh", "/.gnupg", "keychain", "/library/keychains",
+        "id_rsa", "id_ed25519", ".p12", ".pem",
+    ];
+    patterns.iter().any(|c| p.contains(c))
 }
 
 /// 构建分析页磁盘树：从根开始，聚合各顶级目录占用（读操作）。
