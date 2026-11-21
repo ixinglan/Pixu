@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use pixu_app_service::*;
 
-use crate::mock::{MockSettingsService, MockStatusService, MockUninstallService};
-use crate::services::real::{RealCleanService, RealScanService};
+use crate::mock::{MockSettingsService, MockStatusService};
+use crate::services::real::{RealCleanService, RealScanService, RealUninstallService};
 
 pub struct ServiceRegistry {
     pub scan: Arc<dyn ScanService>,
@@ -21,12 +21,12 @@ pub struct ServiceRegistry {
 impl ServiceRegistry {
     pub fn new() -> Self {
         Self {
-            // M1: 清理页扫描与清理走真实实现；其余暂用 Mock
+            // M2: 清理页、软件页、分析页走真实实现；状态/设置暂用 Mock（M3 替换）
             scan: Arc::new(RealScanService::new()),
             status: Arc::new(MockStatusService),
             settings: Arc::new(MockSettingsService),
             clean: Arc::new(RealCleanService::new()),
-            uninstall: Arc::new(MockUninstallService),
+            uninstall: Arc::new(RealUninstallService::new()),
         }
     }
 }

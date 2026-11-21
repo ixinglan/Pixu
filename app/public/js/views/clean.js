@@ -4,6 +4,7 @@ OrbitShell.views.clean = (() => {
   let groups = [];
   let phase = 'idle'; // idle | scanning | result | done
   let lastFreed = 0;
+  let lastResult = null;
 
   function hero(slot, sub, btnText) {
     slot.innerHTML = `
@@ -175,6 +176,7 @@ OrbitShell.views.clean = (() => {
     m.root.querySelector('[data-confirm]').addEventListener('click', async () => {
       m.close();
       const res = await OrbitAPI.executeClean(items);
+      lastResult = res;
       lastFreed = res.freed;
       phase = 'done';
       renderDone();
@@ -183,18 +185,22 @@ OrbitShell.views.clean = (() => {
 
   function renderDone() {
     const slot = document.getElementById('viewSlot');
+    const skipped = lastResult && lastResult.performed === false;
+    const skipMsg = (lastResult && lastResult.message) || '';
     slot.innerHTML = `
       <div class="scan-stage stagger">
-        <div class="mascot-stage" style="--stage-hue:#4AE3C4">${OrbitMascots.pixiu('happy')}</div>
-        <div class="text-sub text-13">本次已释放</div>
-        <div class="num-big" style="color:var(--primary);font-size:52px">${OrbitShell.fmt(lastFreed)}</div>
-        <p class="text-muted text-12 mt-8">操作记录已写入本地审计日志，可在「设置 → 历史记录」回溯</p>
+        <div class="mascot-stage" style="--stage-hue:${skipped ? '#E8B36A' : '#4AE3C4'}">${OrbitMascots.pixiu(skipped ? 'idle' : 'happy')}</div>
+        <div class="text-sub text-13">${skipped ? '写操作已跳过（开发模式）' : '本次已释放'}</div>
+        <div class="num-big" style="color:var(--primary);font-size:52px">${skipped ? '未执行' : OrbitShell.fmt(lastFreed)}</div>
+        ${skipped ? `<div class="banner" style="margin:16px auto 0;max-width:520px;text-align:left">
+          ${I('alert')}<div class="banner-txt"><b>清理未实际写入磁盘</b><br><span>${skipMsg || '已记录到 docs/pending-write-operations.md，待你审阅后手动执行'}</span></div>
+        </div>` : `<p class="text-muted text-12 mt-8">操作记录已写入本地审计日志，可在「设置 → 历史记录」回溯</p>`}
         <div class="mt-24 flex gap-12" style="justify-content:center">
           <button class="btn btn-ghost btn-lg" data-action="home">返回</button>
           <button class="btn btn-primary btn-lg" data-action="again">${I('refresh')}再扫一次</button>
         </div>
       </div>`;
-    OrbitShell.toast(`清理完成，释放 ${OrbitShell.fmt(lastFreed)}`);
+    OrbitShell.toast(skipped ? '已跳过，待审阅后手动执行' : `清理完成，释放 ${OrbitShell.fmt(lastFreed)}`);
     slot.querySelector('[data-action="home"]').addEventListener('click', () => { phase = 'idle'; render(slot); });
     slot.querySelector('[data-action="again"]').addEventListener('click', startScan);
   }

@@ -6,3 +6,6 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+pixu-app-service = { workspace = true }
+pixu-domain-scan = { workspace = true }
+plist = { workspace = true }

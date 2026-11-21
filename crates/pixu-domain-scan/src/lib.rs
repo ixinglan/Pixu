@@ -24,6 +24,11 @@ pub fn measure_path(path: &str) -> u64 {
     if !meta.is_dir() {
         return meta.len();
     }
+    // 目录优先走 `du -sk`（macOS 系统工具，只读），比 Rust walkdir 快得多；
+    // 失败（无权限等）再回退到逐文件统计。
+    if let Some(size) = measure_via_du(&p) {
+        return size;
+    }
     let mut total = 0u64;
     for entry in WalkDir::new(&p).follow_links(false).into_iter().filter_map(|e| e.ok()) {
         if let Ok(m) = entry.metadata() {
@@ -33,6 +38,69 @@ pub fn measure_path(path: &str) -> u64 {
         }
     }
     total
+}
+
+/// 通过 `du -sk` 快速获取目录占用（macOS 只读系统工具）。
+/// 适用于大目录（.app bundle、大型缓存），避免 walkdir 逐文件统计造成卡顿。
+/// 失败（无权限 / du 不可用）时返回 None，由调用方回退到 walkdir。
+fn measure_via_du(path: &Path) -> Option<u64> {
+    let out = std::process::Command::new("/usr/bin/du")
+        .args(["-sk"])
+        .arg(path)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout);
+    let kb: u64 = s.split_whitespace().next()?.parse().ok()?;
+    Some(kb.saturating_mul(1024))
+}
+
+/// 带超时的目录计量：du 超过 timeout_ms 则杀进程返回 None，避免巨型目录卡死 UI。
+/// 用于分析页磁盘树这种「探索性」扫描；清理/卸载目标用精确的 measure_path。
+fn measure_via_du_bounded(path: &Path, timeout_ms: u64) -> Option<u64> {
+    use std::process::Stdio;
+    let mut child = std::process::Command::new("/usr/bin/du")
+        .args(["-sk"])
+        .arg(path)
+        .stdout(Stdio::piped())
+        .spawn()
+        .ok()?;
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) => {
+                if start.elapsed().as_millis() as u64 > timeout_ms {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Err(_) => return None,
+        }
+    }
+    let out = child.wait_with_output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout);
+    let kb: u64 = s.split_whitespace().next()?.parse().ok()?;
+    Some(kb.saturating_mul(1024))
+}
+
+/// 带超时的路径计量：文件取元数据长度，目录走带超时的 du。
+fn measure_bounded(path: &Path, timeout_ms: u64) -> u64 {
+    let meta = match std::fs::symlink_metadata(path) {
+        Ok(m) => m,
+        Err(_) => return 0,
+    };
+    if !meta.is_dir() {
+        return meta.len();
+    }
+    measure_via_du_bounded(path, timeout_ms).unwrap_or(0)
 }
 
 /// 计量一组路径的总和。
@@ -113,25 +181,52 @@ pub fn scan_clean_groups() -> Vec<CleanGroup> {
 
 /// 构建分析页磁盘树：从根开始，聚合各顶级目录占用（读操作）。
 /// 受权限限制，/System 等 SIP 目录可能统计不全，已用项标记 protected。
+/// 顶级子项体积并行计量（du），根体积取子项之和，避免对根再做一次全量 du。
 pub fn build_disk_tree(root: &str) -> DiskNode {
     let root_path = expand_tilde(Path::new(root));
-    let total = measure_path(root);
-    let mut children = Vec::new();
 
+    let mut entries: Vec<(String, PathBuf)> = Vec::new();
     if let Ok(rd) = std::fs::read_dir(&root_path) {
         for entry in rd.flatten() {
-            let name = entry.file_name().to_string_lossy().to_string();
             let path = entry.path();
-            let size = measure_path(&path.to_string_lossy());
-            if size == 0 { continue; }
-            let protected = is_protected(&path);
-            children.push(DiskNode {
-                name, path: Some(path.to_string_lossy().to_string()),
-                size, children: None, protected: Some(protected), free: None,
-            });
+            let name = entry.file_name().to_string_lossy().to_string();
+            entries.push((name, path));
         }
     }
+
+    // 并行计量每个顶级子项
+    let mut measured: Vec<(String, PathBuf, u64)> = Vec::with_capacity(entries.len());
+    std::thread::scope(|s| {
+        let mut handles = Vec::with_capacity(entries.len());
+        for (name, path) in entries {
+            handles.push(s.spawn(move || {
+                let size = measure_bounded(&path, 20_000);
+                (name, path, size)
+            }));
+        }
+        for h in handles {
+            if let Ok((name, path, size)) = h.join() {
+                if size > 0 {
+                    measured.push((name, path, size));
+                }
+            }
+        }
+    });
+
+    let mut children: Vec<DiskNode> = measured
+        .into_iter()
+        .map(|(name, path, size)| DiskNode {
+            name,
+            path: Some(path.to_string_lossy().to_string()),
+            size,
+            children: None,
+            protected: Some(is_protected(&path)),
+            free: None,
+        })
+        .collect();
     children.sort_by(|a, b| b.size.cmp(&a.size));
+
+    let total: u64 = children.iter().map(|c| c.size).sum();
 
     DiskNode {
         name: root_path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| root.into()),

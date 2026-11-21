@@ -24,6 +24,7 @@ serde_json = "1"
 thiserror = "1"
 walkdir = "2"
 sysinfo = "0.32"
+plist = "1"
 pixu-app-service = { path = "crates/pixu-app-service" }
 pixu-domain-scan = { path = "crates/pixu-domain-scan" }
 pixu-domain-uninstall = { path = "crates/pixu-domain-uninstall" }

@@ -2384,12 +2384,14 @@ version = "0.1.0"
 dependencies = [
  "pixu-app-service",
  "pixu-domain-scan",
+ "pixu-domain-uninstall",
  "pixu-fs-ops",
  "pixu-infra",
  "pixu-safety-gate",
  "pixu-safety-guard",
  "serde",
  "serde_json",
+ "sysinfo",
  "tauri",
  "tauri-build",
 ]
@@ -2412,6 +2414,11 @@ dependencies = [
 [[package]]
 name = "pixu-domain-uninstall"
 version = "0.1.0"
+dependencies = [
+ "pixu-app-service",
+ "pixu-domain-scan",
+ "plist",
+]
 
 [[package]]
 name = "pixu-fs-ops"

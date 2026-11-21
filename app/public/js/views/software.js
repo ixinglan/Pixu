@@ -127,10 +127,14 @@ OrbitShell.views.software = (() => {
     m.root.querySelector('[data-back]').addEventListener('click', m.close);
     m.root.querySelector('[data-do]').addEventListener('click', async () => {
       m.close();
-      await OrbitAPI.uninstallApp(app.id, { keepData });
+      const res = await OrbitAPI.uninstallApp(app.id, { keepData });
       drawerCtx.close();
-      apps = apps.filter((a) => a.id !== app.id);
-      OrbitShell.toast(`${app.name} 已移入废纸篓`, 'trash');
+      if (res && res.performed === false) {
+        OrbitShell.toast(`已跳过：${res.message || '待审阅后手动执行'}`, 'trash');
+      } else {
+        apps = apps.filter((a) => a.id !== app.id);
+        OrbitShell.toast(`${app.name} 已移入废纸篓`, 'trash');
+      }
       render(document.getElementById('viewSlot'));
     });
   }

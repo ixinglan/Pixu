@@ -32,8 +32,47 @@ impl ScanService for RealScanService {
         Ok(pixu_domain_scan::scan_clean_groups())
     }
     fn scan_ai_tools(&self) -> AppResult<Vec<AiTool>> { self.fallback.scan_ai_tools() }
-    fn list_apps(&self) -> AppResult<Vec<AppEntry>> { self.fallback.list_apps() }
-    fn analyze_disk(&self) -> AppResult<DiskNode> { self.fallback.analyze_disk() }
+    fn list_apps(&self) -> AppResult<Vec<AppEntry>> {
+        // M2：真实读取 /Applications 元数据与残留（只读）
+        Ok(pixu_domain_uninstall::scan_apps())
+    }
+    fn analyze_disk(&self) -> AppResult<DiskNode> {
+        // M2：真实磁盘树（以个人目录为根）+ 真实容量/可用空间（只读）
+        let home = std::env::var_os("HOME")
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/Users".into());
+        let mut home_tree = pixu_domain_scan::build_disk_tree(&home);
+        home_tree.name = "个人目录".into();
+
+        let (total, avail) = disk_space();
+        Ok(DiskNode {
+            name: "Macintosh HD".into(),
+            path: Some("/".into()),
+            size: total,
+            children: Some(vec![
+                home_tree,
+                DiskNode {
+                    name: "可用空间".into(), path: None, size: avail,
+                    children: None, protected: None, free: Some(true),
+                },
+            ]),
+            protected: None, free: None,
+        })
+    }
+}
+
+/// 读取启动卷（Data 卷）的总容量与可用空间（只读）。
+fn disk_space() -> (u64, u64) {
+    use sysinfo::{Disk, Disks};
+    let disks = Disks::new_with_refreshed_list();
+    // 优先 /System/Volumes/Data，其次 /
+    let pick = |mp: &str| disks.list().iter().find(|d| d.mount_point() == std::path::Path::new(mp));
+    let disk: Option<&Disk> = pick("/System/Volumes/Data").or_else(|| pick("/"));
+    if let Some(d) = disk {
+        (d.total_space(), d.available_space())
+    } else {
+        (0, 0)
+    }
 }
 
 // ─── RealCleanService ───────────────────────────────────────
@@ -129,4 +168,54 @@ fn process_keywords_for(name: &str) -> Vec<&'static str> {
     else if n.contains("docker") { vec!["Docker"] }
     else if n.contains("spotify") { vec!["Spotify"] }
     else { vec![] }
+}
+
+// ─── RealUninstallService ───────────────────────────────────
+// M2: 卸载/废纸篓/FDA 引导接入真实校验骨架，写操作开发期全部跳过。
+
+pub struct RealUninstallService {
+    gate: SafetyGate,
+}
+
+impl RealUninstallService {
+    pub fn new() -> Self { Self { gate: SafetyGate::new() } }
+}
+
+impl Default for RealUninstallService {
+    fn default() -> Self { Self::new() }
+}
+
+impl UninstallService for RealUninstallService {
+    fn uninstall_app(&self, app_id: String, keep_data: bool) -> AppResult<UninstallResult> {
+        // 卸载是写操作（移动 .app 至废纸篓 + 清理残留）→ 开发期跳过，记录待审
+        // 真实卸载管线（解析 bundle 路径 → 安全门 → fs-ops）在 WRITE_OPERATIONS_ENABLED 后接入
+        let _ = (&app_id, keep_data, &self.gate);
+        Ok(UninstallResult { ok: true, performed: false, message: Some(skip_message()) })
+    }
+
+    fn move_to_trash(&self, path: String) -> AppResult<TrashResult> {
+        // 先过安全门（只读校验），再跳过写操作
+        let _ = self.gate.check(&path);
+        Ok(TrashResult { ok: true, performed: false, message: Some(skip_message()) })
+    }
+
+    fn open_fda_settings(&self) -> AppResult<FdaResult> {
+        // 打开「完全磁盘访问权限」设置面板属于系统交互，开发期跳过，记录待审
+        Ok(FdaResult { opened: true, performed: false, message: Some(skip_message()) })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "heavy: real FS scan (apps + disk tree); run with --ignored"]
+    fn real_scan_paths_do_not_panic() {
+        let s = RealScanService::new();
+        let apps = s.list_apps().expect("list_apps should not error");
+        assert!(!apps.is_empty(), "should find at least one app");
+        let disk = s.analyze_disk().expect("analyze_disk should not error");
+        assert!(disk.size > 0, "disk total should be > 0");
+    }
 }

@@ -21,7 +21,11 @@ serde_json = "1"
 # 领域 crate
 pixu-app-service = { workspace = true }
 pixu-domain-scan = { workspace = true }
+pixu-domain-uninstall = { workspace = true }
 pixu-safety-gate = { workspace = true }
 pixu-safety-guard = { workspace = true }
 pixu-fs-ops = { workspace = true }
 pixu-infra = { workspace = true }
+
+# 只读系统指标（M2 磁盘余量 / M3 状态页）
+sysinfo = { workspace = true }

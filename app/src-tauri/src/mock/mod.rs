@@ -281,6 +281,7 @@ pub struct MockScanService;
 pub struct MockStatusService;
 pub struct MockSettingsService;
 pub struct MockCleanService;
+#[allow(dead_code)]
 pub struct MockUninstallService;
 
 impl ScanService for MockScanService {
