@@ -254,6 +254,71 @@ pub struct FdaResult {
     pub message: Option<String>,
 }
 
+// ─── 应用信息 / 更新（M4） ──────────────────────────────────
+
+/// 应用版本号（取自 crate 版本，与 tauri.conf.json 保持一致）。
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// 发布渠道：构建/运行时通过环境变量 PIXU_CHANNEL 切换（stable / beta）。
+/// 未设置时默认 stable；Beta 包构建时注入 PIXU_CHANNEL=beta 即可分流。
+pub fn app_channel() -> String {
+    std::env::var("PIXU_CHANNEL").unwrap_or_else(|_| "stable".to_string())
+}
+
+/// 构建 profile（debug / release），用于「关于」页展示。
+pub fn build_profile() -> &'static str {
+    if cfg!(debug_assertions) { "debug" } else { "release" }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    pub version: String,
+    pub channel: String,
+    pub build: String,
+    pub write_enabled: bool,
+}
+
+pub fn app_info() -> AppInfo {
+    AppInfo {
+        version: APP_VERSION.to_string(),
+        channel: app_channel(),
+        build: build_profile().to_string(),
+        write_enabled: WRITE_OPERATIONS_ENABLED,
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    pub available: bool,
+    pub current_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// 安装动作是否真实执行：开发期一律 false（写操作跳过）。
+    pub performed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl UpdateInfo {
+    pub fn not_available(current_version: String, message: Option<String>) -> Self {
+        Self {
+            available: false,
+            current_version,
+            latest_version: None,
+            notes: None,
+            url: None,
+            performed: false,
+            message,
+        }
+    }
+}
+
 /// 开发期全局开关：写操作是否真实执行。
 /// false 时所有写操作返回「跳过」结果，不改动用户文件。
 pub const WRITE_OPERATIONS_ENABLED: bool = false;

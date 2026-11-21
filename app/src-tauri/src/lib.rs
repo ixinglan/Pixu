@@ -13,6 +13,9 @@ use services::ServiceRegistry;
 pub fn run() {
     tauri::Builder::default()
         .manage(ServiceRegistry::new())
+        // M4：自动更新骨架。endpoint / pubkey 未部署前，check_update 会优雅降级为
+        // 「无可用更新」；install_update 受写开关控制，开发期一律跳过。
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             ping,
             scan_clean_groups,
@@ -29,6 +32,9 @@ pub fn run() {
             uninstall_app,
             move_to_trash,
             open_fda_settings,
+            get_app_info,
+            check_update,
+            install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Pixu");

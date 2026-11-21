@@ -522,4 +522,48 @@ mod tests {
         let set = RealSettingsService::new(audit);
         let _ = set.get_settings().expect("get_settings should not error");
     }
+
+    #[test]
+    #[ignore = "heavy: 端到端写跳过契约（SafetyGuard 初始化 ~数十秒）；run with --ignored"]
+    fn write_operations_are_skipped_e2e() {
+        use pixu_app_service::WRITE_OPERATIONS_ENABLED;
+        // 开发期契约：全局写开关必须为 false
+        assert!(!WRITE_OPERATIONS_ENABLED, "dev build must keep writes disabled");
+
+        use crate::services::ServiceRegistry;
+        let reg = ServiceRegistry::new();
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+
+        // 清理：路径通过安全门、文件不存在 → 仍应返回 performed=false，不触碰文件
+        let item = CleanItem {
+            id: "m4-test".into(),
+            name: "tmp cache".into(),
+            path: format!("{}/Library/Caches/pixu_nonexistent_m4_test", home),
+            size: 1024,
+            selected: true,
+            note: None,
+            risk: None,
+        };
+        let res = reg.clean.execute_clean(vec![item], false).expect("execute_clean");
+        assert!(!res.performed, "clean must be skipped in dev, got {:?}", res);
+
+        let un = reg
+            .uninstall
+            .uninstall_app("com.nonexistent.pixu".into(), true)
+            .expect("uninstall_app");
+        assert!(!un.performed, "uninstall must be skipped in dev");
+
+        let tr = reg
+            .uninstall
+            .move_to_trash("/tmp/pixu_nonexistent_m4_trash".into())
+            .expect("move_to_trash");
+        assert!(!tr.performed, "trash must be skipped in dev");
+
+        let fda = reg.uninstall.open_fda_settings().expect("open_fda_settings");
+        assert!(!fda.performed, "open system settings must be skipped in dev");
+
+        // 审计日志已记录（内存），证明流程走到了记录环节但未执行写
+        let history = reg.settings.get_history().expect("get_history");
+        assert!(!history.is_empty(), "clean should have written an in-memory audit entry");
+    }
 }
