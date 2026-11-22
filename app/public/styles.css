@@ -476,14 +476,72 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* bento 状态卡 */
-.bento { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); }
+.bento {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  align-items: stretch;
+}
 .bento .card { padding: 17px; }
 .bento .span-2 { grid-column: span 2; }
+.bento .span-3 { grid-column: span 3; }
+
+/* 指标卡：flex 列布局，spark 贴底，保证同行卡片视觉齐整且内容不被异常拉伸 */
+.metric-card { display: flex; flex-direction: column; min-height: 188px; }
+.metric-card.is-danger { border-color: rgba(255, 107, 107, 0.35); }
 .metric-label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
+.metric-label > span { flex: 1; }
+.metric-badge {
+  margin-left: auto;
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-sub);
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .metric-value { font-size: 26px; font-weight: 700; margin-top: 9px; font-variant-numeric: tabular-nums; }
 .metric-value small { font-size: 13px; color: var(--text-sub); font-weight: 500; margin-left: 3px; }
+.metric-sub { margin-top: auto; padding-top: 10px; line-height: 1.5; }
+.spark-placeholder { height: 44px; margin-top: 10px; }
 .gauge { width: 92px; height: 92px; }
 .spark { width: 100%; height: 44px; margin-top: 10px; }
+.tag-ok { background: rgba(74, 227, 196, 0.13); color: var(--success); }
+
+/* 网络卡双速率 */
+.net-rates { display: flex; gap: 18px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.net-rate b { font-size: 21px; font-weight: 700; }
+.net-rate small { font-size: 11px; color: var(--text-muted); margin-left: 3px; }
+.net-arrow { font-size: 13px; margin-right: 2px; }
+.net-arrow.down { color: var(--primary); }
+.net-arrow.up { color: var(--hue-analyze); }
+
+/* 健康度卡 */
+.health-card { min-height: 188px; }
+.health-body { display: flex; align-items: center; gap: 16px; margin-top: 12px; flex: 1; }
+.health-body p { flex: 1; }
+.health-cta { align-self: flex-start; margin-top: 12px; }
+
+/* 进程卡 */
+.proc-card { min-height: 188px; }
+.proc-head { padding: 4px 6px 6px; border-bottom: 1px solid var(--border); cursor: default; }
+.proc-head:hover { background: none; }
+.proc-col { width: 84px; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.proc-meta { margin-left: auto; font-weight: 400; }
+.proc-empty { padding: 26px 6px; text-align: center; }
+
+/* 首屏骨架 */
+.sk-line { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+  background-size: 200% 100%; animation: sk-shimmer 1.3s infinite linear; }
+.sk-line.w30 { width: 30%; } .sk-line.w40 { width: 40%; } .sk-line.w60 { width: 60%; }
+.sk-line.w90 { width: 90%; }
+.sk-spark { height: 44px; margin-top: auto; border-radius: 8px; background: var(--surface); }
+.mt-12 { margin-top: 12px; } .mt-16 { margin-top: 16px; }
+@keyframes sk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* 设置页 */
 .setting-row { display: flex; align-items: center; gap: 14px; padding: 15px 2px; border-bottom: 1px solid var(--border); }
@@ -492,9 +550,19 @@ a { color: inherit; text-decoration: none; }
 .setting-row .sr-title { font-size: 13.5px; font-weight: 600; }
 .setting-row .sr-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
 
-@media (max-width: 1080px) {
-  .bento { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 1280px) {
+  .bento { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bento .span-3 { grid-column: span 3; }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 1080px) {
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bento .span-3 { grid-column: span 2; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  .bento { grid-template-columns: 1fr; }
+  .bento .span-2, .bento .span-3 { grid-column: span 1; }
 }
 
 /* ============================================================

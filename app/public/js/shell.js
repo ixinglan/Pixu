@@ -67,6 +67,10 @@ const OrbitShell = (() => {
   async function route() {
     const key = (location.hash.replace('#/', '') || 'clean').split('?')[0];
     const nav = NAV.find((n) => n.key === key) || NAV[0];
+    // 切换前释放旧视图资源（定时器/订阅等），避免菜单切走后仍在后台空转
+    if (currentKey && currentKey !== nav.key) {
+      views[currentKey]?.dispose?.();
+    }
     currentKey = nav.key;
     document.querySelectorAll('.nav-item').forEach((el) =>
       el.classList.toggle('active', el.dataset.nav === nav.key));
