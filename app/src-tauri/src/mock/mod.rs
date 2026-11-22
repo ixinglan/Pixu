@@ -223,9 +223,12 @@ fn mock_metrics() -> Metrics {
         cpu: MetricItem { label: s("CPU"), value: Some(24), unit: s("%"), spark: spark(24, 28, 12), cores: some("M3 Pro · 11 核"), detail: None, down: None, up: None, danger: None },
         mem: MetricItem { label: s("内存"), value: Some(68), unit: s("%"), spark: spark(64, 28, 8), cores: None, detail: some("14.2 / 18 GB"), down: None, up: None, danger: None },
         gpu: MetricItem { label: s("GPU"), value: Some(12), unit: s("%"), spark: spark(14, 28, 10), cores: None, detail: None, down: None, up: None, danger: None },
-        disk: MetricItem { label: s("磁盘"), value: Some(91), unit: s("%"), spark: spark(88, 28, 3), cores: None, detail: some("已用 412 GB / 460 GB"), down: None, up: None, danger: Some(true) },
+        disk: MetricItem { label: s("磁盘"), value: Some(91), unit: s("%"), spark: spark(88, 28, 3), cores: None, detail: some("已用 412 GB / 460 GB · 可用 48 GB"), down: None, up: None, danger: Some(true) },
         net: MetricItem { label: s("网络"), value: None, unit: s("MB/s"), spark: spark(30, 28, 22), cores: None, detail: None, down: some("8.4"), up: some("1.2"), danger: None },
-        battery: MetricItem { label: s("电池"), value: Some(76), unit: s("%"), spark: vec![], cores: None, detail: some("已接电源 · 循环 84 次"), down: None, up: None, danger: None },
+        battery: MetricItem { label: s("电池"), value: Some(76), unit: s("%"), spark: vec![], cores: None, detail: some("已接电源 · 循环 84 次 · 健康 92%"), down: None, up: None, danger: None },
+        health: MetricItem { label: s("健康度"), value: Some(82), unit: s("分"), spark: vec![], cores: None, detail: some("磁盘占用偏高，建议清理"), down: None, up: None, danger: None },
+        fan: MetricItem { label: s("风扇"), value: None, unit: s("RPM"), spark: vec![], cores: None, detail: some("无风扇（被动散热）"), down: None, up: None, danger: None },
+        uptime: MetricItem { label: s("运行时间"), value: Some(271_200), unit: s("秒"), spark: vec![], cores: None, detail: some("3 天 3 小时 20 分"), down: None, up: None, danger: None },
     }
 }
 

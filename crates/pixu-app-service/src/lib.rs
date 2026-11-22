@@ -170,6 +170,12 @@ pub struct Metrics {
     pub disk: MetricItem,
     pub net: MetricItem,
     pub battery: MetricItem,
+    /// 综合健康度评分（0-100，后端依据磁盘/电池/内存压力计算）。
+    pub health: MetricItem,
+    /// 风扇转速（RPM）；无风扇或未授权读取时 value=None。
+    pub fan: MetricItem,
+    /// 系统运行时间（detail 为人话时长，value 为总秒数）。
+    pub uptime: MetricItem,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
