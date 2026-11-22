@@ -22,4 +22,10 @@ app/src-tauri/gen/
 .env
 .env.local
 
+# 内部研发资料（计划、调研、流程图、内部记录），不随公开仓库分发
+/product-rd-plan-v*.md
+/mole-research-rust-gpui-plan.md
+/pixu-arch-flow_v*.html
+/docs/
+
 
