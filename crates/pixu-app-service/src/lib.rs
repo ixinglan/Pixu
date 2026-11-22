@@ -330,7 +330,7 @@ impl UpdateInfo {
 pub const WRITE_OPERATIONS_ENABLED: bool = false;
 
 pub fn skip_message() -> String {
-    s("写操作已跳过（开发期 WRITE_OPERATIONS_ENABLED=false），请在 docs/pending-write-operations.md 审阅后手动执行")
+    s("写操作已跳过：当前构建禁用了所有写操作（WRITE_OPERATIONS_ENABLED=false），未改动任何文件")
 }
 
 // ─── 服务 trait ─────────────────────────────────────────────

@@ -193,7 +193,7 @@ OrbitShell.views.clean = (() => {
         <div class="text-sub text-13">${skipped ? '写操作已跳过（开发模式）' : '本次已释放'}</div>
         <div class="num-big" style="color:var(--primary);font-size:52px">${skipped ? '未执行' : OrbitShell.fmt(lastFreed)}</div>
         ${skipped ? `<div class="banner" style="margin:16px auto 0;max-width:520px;text-align:left">
-          ${I('alert')}<div class="banner-txt"><b>清理未实际写入磁盘</b><br><span>${skipMsg || '已记录到 docs/pending-write-operations.md，待你审阅后手动执行'}</span></div>
+          ${I('alert')}<div class="banner-txt"><b>清理未实际写入磁盘</b><br><span>${skipMsg || '当前构建已禁用写操作，未对磁盘做任何修改'}</span></div>
         </div>` : `<p class="text-muted text-12 mt-8">操作记录已写入本地审计日志，可在「设置 → 历史记录」回溯</p>`}
         <div class="mt-24 flex gap-12" style="justify-content:center">
           <button class="btn btn-ghost btn-lg" data-action="home">返回</button>
